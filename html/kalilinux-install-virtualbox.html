@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kali Linux のインストール手順（VirtualBox 前提）と必要容量 — KaliLinuxことはじめ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+<p class="site-title"><a href="index.html">KaliLinuxことはじめ</a></p>
+</header>
+<main>
+<article>
+<h1>Kali Linux のインストール手順（VirtualBox 前提）と必要容量</h1>
+
+<section class="question">
+<h2>質問</h2>
+<p>VirtualBox はすでにインストール済み。ここから <strong>Kali Linux</strong> を VirtualBox 上に乗せたい。
+具体的な手順と、ディスク容量はどれくらい必要なのか。また Kali Linux はかなり容量を食うらしいが、その理由も知っておきたい。</p>
+</section>
+
+<section class="cause">
+<h2>原因（理由）</h2>
+<p>Kali 公式は <strong>事前構築済みの VirtualBox イメージ</strong> を配布しており、これを使うのが最短経路。
+ISO から新規 VM を作って手動インストールする方法もあるが、初回は事前構築イメージで十分間に合う。</p>
+
+<p><strong>容量について</strong>：実機で計測したところ、VirtualBox 本体と Kali Linux を合わせて <strong>約 36 GB</strong> 必要になった。内訳の目安：</p>
+<ul>
+<li>VirtualBox 本体（実行ファイル群）：数百 MB</li>
+<li>Kali 配布 <code>.7z</code> アーカイブ（ダウンロード時）：約 3〜4 GB</li>
+<li>展開後の仮想ディスク（<code>.vdi</code>）＋ 起動・更新で増えた分：30 GB 前後</li>
+</ul>
+
+<p><strong>Kali Linux がここまで大容量になる理由</strong>：</p>
+<ul>
+<li><strong>600 種類以上のセキュリティ／ペネトレーションテスト用ツール</strong> を最初からプリインストールしている（Nmap、Metasploit、Burp Suite、Wireshark、John the Ripper、Hydra、Aircrack-ng、Hashcat など）</li>
+<li><strong>パスワード解析用のワードリスト</strong>（<code>rockyou.txt</code> など）や、Metasploit のモジュール／ペイロードのデータベースを同梱している</li>
+<li><strong>フォレンジック・リバースエンジニアリング系ツール</strong>（Autopsy、Volatility、Ghidra、radare2 など）も標準搭載</li>
+<li>Python／Ruby／Perl／Go など、各種ツールが依存する <strong>複数の言語ランタイムと豊富なライブラリ</strong> を同時に抱える</li>
+<li>デフォルトの <strong>Xfce デスクトップ環境</strong> と、日本語フォント等の言語パック</li>
+</ul>
+<p>不要なツールを後から削れば縮められるが、学習段階では「全部入り」のまま使うほうが手っ取り早い。</p>
+</section>
+
+<section class="solution">
+<h2>対策（手順：事前構築済みイメージを使う最短経路）</h2>
+<ol>
+<li>ブラウザで <a href="https://www.kali.org/get-kali/#kali-virtual-machines" target="_blank" rel="noopener">Kali 公式の Virtual Machines ダウンロードページ</a> を開く</li>
+<li><strong>VirtualBox 64-bit</strong> の <code>.7z</code> ファイル（ファイル名例：<code>kali-linux-YYYY.X-virtualbox-amd64.7z</code>）をダウンロードする</li>
+<li>7-Zip などの解凍ソフトで <code>.7z</code> を展開する（展開先のフォルダに <code>.vbox</code> 定義ファイルと仮想ディスク <code>.vdi</code> が入っている）</li>
+<li>展開先フォルダの <code>.vbox</code> ファイルをダブルクリック → 自動的に VirtualBox が起動し、VM 一覧に Kali Linux が登録される</li>
+<li>VirtualBox の VM 一覧で Kali Linux を選択し、<strong>「起動」</strong> をクリック</li>
+<li>初回ログインは <strong>ユーザー名 <code>kali</code> ／ パスワード <code>kali</code></strong>（ログイン後、端末で <code>passwd</code> を実行してパスワードを変更しておく）</li>
+<li>起動確認後、最新化のため端末で次を実行：<br><code>sudo apt update &amp;&amp; sudo apt full-upgrade -y</code>（管理者パスワードは初期値の <code>kali</code>）</li>
+</ol>
+</section>
+
+<aside class="note">
+<h2>注意点</h2>
+<ul>
+<li>ダウンロード前後で <strong>SHA256 ハッシュ</strong> を公式ページの値と照合し、<code>.7z</code> が改ざんされていないかを確認しておくと安心</li>
+<li>展開先・配置先のドライブには <strong>40 GB 以上の空き</strong> を見ておくと安全（アップデート・ログ・スナップショットで容量は増えていくため）</li>
+<li>初回起動が遅い／黒画面で止まる場合は、BIOS／UEFI の <strong>仮想化支援機能（Intel VT-x／AMD-V）が有効</strong>か、Windows の <strong>Hyper-V が無効</strong>か、を再確認する（前記事 <a href="virtualbox-install-windows.html">VirtualBox が必要な理由と Windows 11 へのインストール手順</a> 末尾の注意点を参照）</li>
+<li>本記事の手順は <strong>事前構築済みイメージ</strong> による最短経路。ISO からのカスタムインストールが必要になった場合は別記事で扱う</li>
+</ul>
+</aside>
+
+<p class="nav"><a href="index.html">← 記事一覧へ戻る</a></p>
+</article>
+</main>
+</body>
+</html>
