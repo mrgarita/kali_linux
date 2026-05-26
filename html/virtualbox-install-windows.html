@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VirtualBox が必要な理由と Windows 11 へのインストール手順 — KaliLinuxことはじめ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+<p class="site-title"><a href="index.html">KaliLinuxことはじめ</a></p>
+</header>
+<main>
+<article>
+<h1>VirtualBox が必要な理由と Windows 11 へのインストール手順</h1>
+
+<section class="question">
+<h2>問い</h2>
+<p>Kali Linux を使うのに VirtualBox のインストールが前提となっている記事が多い。
+なぜ VirtualBox が必要なのか、そして Windows ではどうインストールすればよいのか。</p>
+</section>
+
+<section class="cause">
+<h2>原因（理由）</h2>
+<ul>
+<li>Kali Linux は攻撃検証用のツールを多数同梱しており、普段使いの OS（Windows）に直接インストールすると、ホスト環境を汚しやすい／必要なときだけ立ち上げる運用がしづらい／誤操作のリスクがある</li>
+<li>公式ドキュメントも <strong>仮想化環境内での実行</strong> を標準的な利用形態として案内している</li>
+<li>VirtualBox を使えば <strong>Windows をホスト OS のまま、Kali Linux をゲスト OS として隔離して動かす</strong> 構成が取れる</li>
+<li>数ある仮想化ソフトの中で VirtualBox を選ぶ理由：<strong>無料／オープンソース／Kali 公式が動作確認している／設定が比較的シンプル</strong></li>
+</ul>
+</section>
+
+<section class="solution">
+<h2>対策（Windows 11 でのインストール手順）</h2>
+<ol>
+<li>ブラウザで <a href="https://www.virtualbox.org/" target="_blank" rel="noopener">VirtualBox 公式サイト</a> を開き、<code>Downloads</code> から <strong>Windows hosts</strong> 版の最新インストーラ（<code>.exe</code>）をダウンロードする</li>
+<li>ダウンロードした <code>.exe</code> を右クリック →「管理者として実行」</li>
+<li>インストーラの画面指示に従い <code>Next</code> で進める（インストール先・機能選択は既定値で問題ない）</li>
+<li>インストール途中で <strong>ネットワーク機能の導入による一時的なネットワーク切断</strong> の警告が出る → <code>Yes</code> で続行</li>
+<li>インストール完了後、スタートメニューに <strong>Oracle VM VirtualBox</strong> が追加される</li>
+<li>（任意）公式サイトから <strong>VirtualBox Extension Pack</strong> もダウンロードし、VirtualBox 起動後の <code>ファイル → ツール → 拡張機能パッケージ マネージャー</code> から追加する（USB 2.0/3.0、リモートデスクトップなどの追加機能が利用できる）</li>
+</ol>
+</section>
+
+<aside class="note">
+<h2>注意点</h2>
+<ul>
+<li><strong>BIOS／UEFI で Intel VT-x または AMD-V が有効</strong> になっている必要がある（無効だと VM が起動しない）</li>
+<li>Windows の <strong>Hyper-V が有効</strong> だと VirtualBox の動作が遅くなる場合がある（Hyper-V 無効化の手順は別記事として用意する予定）</li>
+<li>Windows 10 でも基本手順は同じ。インストーラの UI 文言が微妙に異なる程度</li>
+</ul>
+</aside>
+
+<p class="nav"><a href="index.html">← 記事一覧へ戻る</a></p>
+</article>
+</main>
+</body>
+</html>
