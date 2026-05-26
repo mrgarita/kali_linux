@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kali Linux でのターミナル起動とコマンド入力の基本 — KaliLinuxことはじめ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+<p class="site-title"><a href="index.html">KaliLinuxことはじめ</a></p>
+</header>
+<main>
+<article>
+<h1>Kali Linux でのターミナル起動とコマンド入力の基本</h1>
+
+<section class="question">
+<h2>質問</h2>
+<p>Kali Linux をインストールしたものの、「コマンドを実行する」とはどこで何をすれば
+よいのかが分からない。ターミナル（端末）はどう起動して、どうやってコマンドを
+打ち込み、結果を読み取ればいいのか。</p>
+</section>
+
+<section class="cause">
+<h2>原因（理由）</h2>
+<ul>
+<li>Kali Linux に同梱されているセキュリティツールの大半は <strong>コマンドラインで操作する</strong> 作りになっており、ターミナル操作は避けて通れない</li>
+<li>Kali のデフォルトデスクトップ環境（Xfce）にはターミナルの起動経路が複数あり、最初は迷いやすい</li>
+<li>「コマンドを打って <kbd>Enter</kbd> で実行 → 結果が表示される → 次の入力待ちに戻る」という基本サイクルさえ掴めれば、以後の作業がぐっと楽になる</li>
+</ul>
+</section>
+
+<section class="solution">
+<h2>対策（手順）</h2>
+
+<h3>1. ターミナルの起動方法</h3>
+<ul>
+<li><strong>方法 A（推奨）</strong>：画面上部のパネル（タスクバー）にある「黒い四角に <code>&gt;_</code>」のアイコンをクリック</li>
+<li><strong>方法 B</strong>：画面左上「アプリケーション」メニュー → <code>Usual applications</code> → <code>System</code> → <code>Terminal Emulator</code> を選ぶ</li>
+<li><strong>方法 C</strong>：キーボードショートカット <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd>（環境によっては割り当てられている）</li>
+</ul>
+
+<h3>2. プロンプトの読み方</h3>
+<p>ターミナルを起動すると、次のような行が表示されて入力待ちになる：</p>
+<pre><code>kali@kali:~$ </code></pre>
+<ul>
+<li>最初の <code>kali</code> = ログイン中のユーザー名</li>
+<li><code>@</code> の後ろの <code>kali</code> = コンピューター（ホスト）の名前</li>
+<li><code>:~</code> = 今いるフォルダ（ディレクトリ）。<code>~</code> はホームディレクトリの省略記号</li>
+<li>末尾の <code>$</code> = 一般ユーザーでの入力待ち（管理者なら <code>#</code> に変わる）</li>
+</ul>
+<p>この <code>$</code> の右側に、コマンドを打ち込んでいく。</p>
+
+<h3>3. コマンドの入力と実行</h3>
+<p>キーボードからコマンドを打ち、最後に <kbd>Enter</kbd> を押すと実行される。試しに次のコマンドを 1 行ずつ打ち、動きを確認してみる：</p>
+<pre><code>kali@kali:~$ pwd
+/home/kali
+kali@kali:~$ whoami
+kali
+kali@kali:~$ date
+2026年  5月 26日 火曜日 12:00:00 JST
+kali@kali:~$ ls
+Desktop  Documents  Downloads  Music  Pictures  Public  Templates  Videos</code></pre>
+<ul>
+<li><code>pwd</code> = 今いるディレクトリのパスを表示する（print working directory）</li>
+<li><code>whoami</code> = ログイン中のユーザー名を表示する</li>
+<li><code>date</code> = 現在の日時を表示する</li>
+<li><code>ls</code> = 今いるディレクトリの中身を一覧する（list）</li>
+</ul>
+<p>コマンドを実行すると結果が下に出力され、続けて次の <code>kali@kali:~$ </code> が現れる。これが「次の入力を受け付けている」状態。</p>
+
+<h3>4. 管理者権限が必要なときは sudo を付ける</h3>
+<p>システム全体に影響する操作（パッケージのインストール、設定ファイルの編集 など）には、コマンドの頭に <code>sudo</code> を付ける。実行するとパスワードを聞かれる：</p>
+<pre><code>kali@kali:~$ sudo apt update
+[sudo] password for kali: </code></pre>
+<p>ここで <strong>パスワードを打っても画面には何も表示されない</strong>（カーソルすら動かないように見える）。これは Linux の仕様であり、ちゃんと入力されている。打ち終わったら <kbd>Enter</kbd>。</p>
+
+<h3>5. 知っておくと楽になるキー操作</h3>
+<ul>
+<li><kbd>↑</kbd>（上矢印）：直前に実行したコマンドを呼び戻す（長いコマンドを打ち直さずに済む）</li>
+<li><kbd>Tab</kbd>：コマンド名やファイル名を途中まで打って <kbd>Tab</kbd> を押すと、続きを自動補完してくれる</li>
+<li><kbd>Ctrl</kbd>+<kbd>C</kbd>：実行中のコマンドを中断する</li>
+<li><kbd>Ctrl</kbd>+<kbd>L</kbd>（または <code>clear</code> コマンド）：画面をクリアして上にスクロール</li>
+</ul>
+
+<h3>6. ターミナルを閉じる</h3>
+<p><code>exit</code> と入力して <kbd>Enter</kbd>、またはウィンドウ右上の「×」ボタンで閉じる。ターミナルを閉じても OS 自体は動き続ける。シャットダウンしたいときはデスクトップ右上の電源メニューから操作する。</p>
+</section>
+
+<aside class="note">
+<h2>注意点</h2>
+<ul>
+<li>コマンドのつづりは <strong>大文字小文字を厳密に区別する</strong>。<code>Ls</code> や <code>LS</code> は <code>ls</code> とは別物として扱われる</li>
+<li>スペースや記号にも意味がある。最初のうちは打ち間違いを避けるため、本記事や信頼できる資料から <strong>コピー＆ペースト</strong> するのが安全</li>
+<li><kbd>Ctrl</kbd>+<kbd>C</kbd> で止めても、ファイルへの書き込みなど <strong>すでに行われた操作は巻き戻らない</strong></li>
+<li>「ターミナル」「端末」「シェル」はだいたい同じものを指す（厳密には別概念だが、初学のうちは同じものと捉えてよい）</li>
+</ul>
+</aside>
+
+<p class="nav"><a href="index.html">← 記事一覧へ戻る</a></p>
+</article>
+</main>
+</body>
+</html>

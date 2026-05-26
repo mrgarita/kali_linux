@@ -51,8 +51,26 @@ ISO から新規 VM を作って手動インストールする方法もあるが
 <li>7-Zip などの解凍ソフトで <code>.7z</code> を展開する（展開先のフォルダに <code>.vbox</code> 定義ファイルと仮想ディスク <code>.vdi</code> が入っている）</li>
 <li>展開先フォルダの <code>.vbox</code> ファイルをダブルクリック → 自動的に VirtualBox が起動し、VM 一覧に Kali Linux が登録される</li>
 <li>VirtualBox の VM 一覧で Kali Linux を選択し、<strong>「起動」</strong> をクリック</li>
-<li>初回ログインは <strong>ユーザー名 <code>kali</code> ／ パスワード <code>kali</code></strong>（ログイン後、端末で <code>passwd</code> を実行してパスワードを変更しておく）</li>
-<li>起動確認後、最新化のため端末で次を実行：<br><code>sudo apt update &amp;&amp; sudo apt full-upgrade -y</code>（管理者パスワードは初期値の <code>kali</code>）</li>
+<li>初回ログインは <strong>ユーザー名 <code>kali</code> ／ パスワード <code>kali</code></strong></li>
+<li>ログイン後、パスワードを変更しておく。デスクトップ上のターミナル（端末）を起動して <code>passwd</code> コマンドを実行する：
+<pre><code>kali@kali:~$ passwd
+Changing password for kali.
+Current password:
+New password:
+Retype new password:
+passwd: password updated successfully</code></pre>
+<ul>
+<li><code>Current password:</code> → 現在のパスワード（<code>kali</code>）を入力して <kbd>Enter</kbd></li>
+<li><code>New password:</code> → 新しく設定したいパスワードを入力して <kbd>Enter</kbd></li>
+<li><code>Retype new password:</code> → 確認のため同じものを再入力して <kbd>Enter</kbd></li>
+<li>最後に <code>password updated successfully</code> と表示されれば成功</li>
+</ul>
+<p>パスワード入力中は <strong>画面に文字（や <code>*</code>）が表示されない</strong>が、ちゃんと入力できている。ターミナルを開くのが初めての場合は <a href="kalilinux-terminal-basics.html">Kali Linux でのターミナル起動とコマンド入力の基本</a> を先に参照すると迷わない。</p>
+</li>
+<li>起動確認後、システムを最新化するためターミナルで次のコマンドを実行する：
+<pre><code>kali@kali:~$ sudo apt update &amp;&amp; sudo apt full-upgrade -y</code></pre>
+<p>途中で <code>[sudo] password for kali:</code> と聞かれたら、ひとつ前のステップで設定した新しいパスワードを入力する（こちらも画面には表示されない）。完了まで数分〜十数分かかることがある。</p>
+</li>
 </ol>
 </section>
 
