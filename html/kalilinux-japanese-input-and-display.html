@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kali Linux で日本語入力と日本語表示を有効にする — KaliLinuxことはじめ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+<p class="site-title"><a href="index.html">KaliLinuxことはじめ</a></p>
+</header>
+<main>
+<article>
+<h1>Kali Linux で日本語入力と日本語表示を有効にする</h1>
+
+<section class="question">
+<h2>質問</h2>
+<p>Kali Linux をインストールした直後は、メニューや端末出力が英語のままで日本語が表示されず、文字を打っても日本語入力ができない。さらに、<code>fcitx5</code> を入れて日本語入力を準備しても、JIS キーボードを使っているのにキートップの刻印と実際に出る記号がずれる（<code>@</code> を押すと <code>"</code> が出る等）、日本語と英語の切替キーが分からない、といった二次的な問題が出てくる。これらをまとめてどう設定すればよいか。</p>
+</section>
+
+<section class="cause">
+<h2>原因（理由）</h2>
+<ul>
+<li>Kali のデフォルトロケールは <code>en_US.UTF-8</code> で、日本語ロケール（<code>ja_JP.UTF-8</code>）や日本語フォント（Noto CJK 等）が初期状態では入っていない</li>
+<li>日本語入力エンジン（IME）も初期状態では入っていない。<code>fcitx5</code> 本体と日本語変換エンジン（<code>mozc</code>）の両方を別々にインストールし、さらに <strong>入力メソッドとして fcitx5 を使う</strong> ことを OS に教える操作が必要</li>
+<li>さらに落とし穴として、<code>fcitx5-mozc</code> パッケージを apt で入れただけでは <strong>Mozc が fcitx5 の「現在の入力メソッド」一覧に自動追加されない</strong> ことがある（環境・バージョンによる）。<code>fcitx5-configtool</code> から手動で Mozc を追加しないと、fcitx5 自体は動いていても呼び出せる入力メソッドが英語キーボードだけになり、日本語入力ができない</li>
+<li>インストール時にキーボードレイアウトを <strong>English (US)</strong> のまま進めると、JIS（日本語）配列のキーボードを物理的に使っていても、OS は US 配列として記号位置を割り当てる。これがキー刻印と入力結果がずれる原因</li>
+<li>fcitx5 の既定切替キーは <kbd>Ctrl</kbd>+<kbd>Space</kbd> のため、JIS キーボード左上の <kbd>半角/全角</kbd> キーは押しても反応しない。<kbd>半角/全角</kbd> で切り替えたい場合は fcitx5 / Mozc 側で <strong>明示的にキーを割り当てる</strong> 必要がある</li>
+</ul>
+</section>
+
+<section class="solution">
+<h2>対策（手順）</h2>
+
+<h3>1. 日本語フォントとロケールを入れる</h3>
+<p>まず現在のロケール設定を確認する：</p>
+<pre><code>kali@kali:~$ locale
+LANG=en_US.UTF-8
+LANGUAGE=
+LC_CTYPE="en_US.UTF-8"
+...
+LC_ALL=</code></pre>
+<p>日本語フォントと日本語関連パッケージをまとめて導入する：</p>
+<pre><code>kali@kali:~$ sudo apt update
+kali@kali:~$ sudo apt install -y task-japanese fonts-noto-cjk fonts-noto-cjk-extra</code></pre>
+<ul>
+<li><code>task-japanese</code> = Debian が用意している「日本語環境に必要なパッケージ一式」の取りまとめ</li>
+<li><code>fonts-noto-cjk</code> / <code>fonts-noto-cjk-extra</code> = 日本語・中国語・韓国語の文字を表示するためのフォント。これがないと <code>□</code>（豆腐）になる</li>
+</ul>
+<p>次に、日本語ロケールを生成して既定にする：</p>
+<pre><code>kali@kali:~$ sudo dpkg-reconfigure locales</code></pre>
+<p>青い画面（テキスト UI のダイアログ）が出るので、次の通り操作する：</p>
+<ul>
+<li>長い言語リストから <code>ja_JP.UTF-8 UTF-8</code> を見つけ、<kbd>Space</kbd> で <strong>チェックを入れる</strong>（行頭が <code>[*]</code> になる）。<kbd>Tab</kbd> で OK にカーソルを移し <kbd>Enter</kbd></li>
+<li>続いて「デフォルトのロケールはどれにするか」を聞かれるので <code>ja_JP.UTF-8</code> を選んで <kbd>Enter</kbd></li>
+</ul>
+<p>反映するには再ログインまたは再起動が必要：</p>
+<pre><code>kali@kali:~$ sudo reboot</code></pre>
+<p>再起動後、再度 <code>locale</code> や <code>date</code> を実行して日本語表示になっているか確認する：</p>
+<pre><code>kali@kali:~$ locale
+LANG=ja_JP.UTF-8
+...
+kali@kali:~$ date
+2026年  5月 27日 水曜日 15:30:45 JST</code></pre>
+
+<h3>2. キーボードレイアウトを JIS（日本語配列）に合わせる</h3>
+<p>JIS キーボードを使っているのに <code>@</code> や <code>_</code> がキー刻印と違う位置から出る場合は、OS 側のキーボードレイアウトが US 配列のままになっている。Xfce では <strong>GUI とコマンドの 2 通り</strong> で変更できる。</p>
+
+<p><strong>方法 A：GUI で変更する（推奨）</strong></p>
+<ul>
+<li>画面左上「アプリケーション」メニュー →「設定」→「キーボード」を開く（Xfce の <code>Settings Manager</code> 経由でも可）</li>
+<li>「レイアウト」タブを選ぶ</li>
+<li>「システムのデフォルトを使用する」のチェックを外す</li>
+<li>レイアウト一覧の下にある「<strong>追加</strong>」ボタンを押し、一覧から <strong>Japanese</strong> →「<strong>Japanese (OADG 109A)</strong>」を選んで「OK」</li>
+<li>既存の <code>English (US)</code> 行を選んで「<strong>削除</strong>」ボタンで取り除く（Japanese が唯一のレイアウトになる）</li>
+<li>設定画面下の入力欄にキーを試し打ちして、刻印どおりに記号が出ることを確認</li>
+</ul>
+
+<p><strong>方法 B：コマンドで恒久的に変更する</strong></p>
+<p>GUI が見つからない／使えないときは、設定ファイルを書き換える対話形式のコマンドを使う：</p>
+<pre><code>kali@kali:~$ sudo dpkg-reconfigure keyboard-configuration</code></pre>
+<p>順番に次のように選ぶ（青い画面で <kbd>↑</kbd><kbd>↓</kbd> で選択、<kbd>Enter</kbd> で確定）：</p>
+<ul>
+<li>キーボードモデル：<code>Generic 105-key PC (intl.)</code>（特殊キーが付いた機種ならその機種名）</li>
+<li>レイアウト国：<code>Japanese</code></li>
+<li>キーボードレイアウト：<code>Japanese - Japanese (OADG 109A)</code></li>
+<li>AltGr キー、Compose キー：いずれも既定のままで <kbd>Enter</kbd></li>
+</ul>
+<p>設定はその場で <code>/etc/default/keyboard</code> に書かれ、再起動後も維持される。GUI のレイアウトとは別に <strong>仮想コンソール（<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F2</kbd> 等で出る黒い画面）の配列も同じ設定で揃う</strong> ので、両方一致させたいときはこちらが確実。</p>
+
+<p><strong>方法 C：いま開いているセッションだけ一時的に切り替えたい</strong></p>
+<pre><code>kali@kali:~$ setxkbmap -layout jp</code></pre>
+<p>再起動すると元に戻る。動作確認用と割り切って使う。</p>
+
+<p><strong>動作確認</strong>：以下のキーを試し打ちして、刻印どおりの記号が出るかチェックする。</p>
+<ul>
+<li><kbd>@</kbd>（<kbd>P</kbd> の右隣） → <code>@</code> が出る</li>
+<li><kbd>Shift</kbd>+<kbd>2</kbd> → <code>"</code> が出る（US 配列だと <code>@</code> が出てしまう）</li>
+<li><kbd>Shift</kbd>+<kbd>-</kbd> → <code>=</code></li>
+<li><kbd>Shift</kbd>+<kbd>ろ</kbd>（右下） → <code>_</code></li>
+</ul>
+
+<h3>3. 日本語入力（fcitx5 + mozc）を入れる</h3>
+<p>本体・変換エンジン・設定 GUI をまとめて導入する：</p>
+<pre><code>kali@kali:~$ sudo apt install -y fcitx5 fcitx5-mozc fcitx5-config-qt</code></pre>
+<ul>
+<li><code>fcitx5</code> = 入力メソッドフレームワーク本体</li>
+<li><code>fcitx5-mozc</code> = Mozc（Google 日本語入力のオープンソース版）を fcitx5 から使うためのモジュール</li>
+<li><code>fcitx5-config-qt</code> = fcitx5 の設定ツール（<code>fcitx5-configtool</code> コマンドで起動）</li>
+</ul>
+<p>続いて、OS の入力メソッドとして fcitx5 を使うことを宣言する：</p>
+<pre><code>kali@kali:~$ im-config -n fcitx5</code></pre>
+<p>このコマンドは <strong>成功しても画面には何も出ない</strong>（無音で <code>~/.xinputrc</code> に設定が書き込まれる）。エラーが出ていなければそのまま次へ進む。</p>
+<p>反映には再ログインか再起動が必要：</p>
+<pre><code>kali@kali:~$ sudo reboot</code></pre>
+
+<p>再起動後、<strong>fcitx5 が起動していることを確認</strong>する：</p>
+<pre><code>kali@kali:~$ pgrep -l fcitx5
+1323 fcitx5</code></pre>
+<p>このように番号と <code>fcitx5</code> が表示されれば、自動起動は成功。何も表示されない場合は本記事末尾の「注意点」を参照。</p>
+
+<p><strong>続けて、fcitx5 に Mozc を「使う入力メソッド」として登録する</strong>。これをやらないと fcitx5 は動いていても英語キーボードしか呼び出せず、日本語入力ができない（実機で必ず詰まる箇所）。端末から設定ツールを起動：</p>
+<pre><code>kali@kali:~$ fcitx5-configtool</code></pre>
+<p>または「アプリケーション」メニュー →「設定」→「Fcitx 5 設定」からも開ける。開いたウィンドウは次のような左右パネル構成になっている：</p>
+<ul>
+<li><strong>左パネル</strong>：現在のグループのツリー。<code>Default</code> グループの下に <code>Keyboard - English (US)</code> が並んでいる</li>
+<li><strong>右パネル</strong>：「<strong>有効な入力メソッド</strong>」リスト。<code>Mozc</code> を含む追加候補が並ぶ</li>
+<li><strong>中央</strong>：左右のパネルの間に「<strong>←</strong>」「<strong>→</strong>」の矢印ボタンがある</li>
+</ul>
+<p>Mozc を Default グループに追加する手順：</p>
+<ol>
+<li>右パネルの「有効な入力メソッド」リストから <strong>Mozc</strong> をシングルクリックで選択する</li>
+<li>左右パネルの間にある中央の「<strong>←</strong>」ボタン（左向き矢印）を押す</li>
+<li>左パネルの <code>Default</code> 配下に <code>Keyboard - English (US)</code> と <code>Mozc</code> の両方が並んでいることを目視で確認</li>
+<li>右下の「<strong>適用</strong>」ボタンを押して設定を反映</li>
+<li>続いて右下の「<strong>閉じる</strong>」ボタンでウィンドウを閉じる（右下のボタンは「適用」「OK」「閉じる」の 3 つが並ぶが、「OK」を押しても <strong>ウィンドウが閉じない</strong> ことがあるので明示的に「閉じる」を押す）</li>
+</ol>
+
+<p><strong>動作確認</strong>：テキストエディタ（メニュー →「アクセサリ」→ <code>Mousepad</code> など）を開き、次の挙動になるか確かめる：</p>
+<ul>
+<li><kbd>Ctrl</kbd>+<kbd>Space</kbd> を押すと、<strong>入力中のカーソルのすぐ下に小さなポップアップ</strong>で「あ」（日本語入力）／「A」（直接入力）が表示される。パネル右上ではなく <strong>カーソル付近にポップアップで出る点</strong> に注意（パネルに見当たらなくても慌てない）</li>
+<li>「あ」状態のまま <code>nihongo</code> と打ち <kbd>Space</kbd> を押すと「日本語」に変換される</li>
+</ul>
+<p>ここまで動けば、IME のセットアップは完了。</p>
+
+<h3>4. <kbd>半角/全角</kbd> キーで切り替えられることを確認する（任意）</h3>
+<p><strong>前提</strong>：手順 3 まで完了し、テキストエディタで <kbd>Ctrl</kbd>+<kbd>Space</kbd> により「あ」⇔「A」が切り替わる状態になっていること。</p>
+<p>Kali / Debian の fcitx5 は <strong>既定で <kbd>半角/全角</kbd> キーも切替キーとして登録済み</strong> なので、JIS キーボードならば追加設定なしで使えるはず。まず確認だけする：</p>
+<ol>
+<li>テキストエディタ（Mousepad など）を開き、入力欄にカーソルを置く</li>
+<li>JIS キーボード左上の <kbd>半角/全角</kbd> キーを単独で押す</li>
+<li>カーソル下のポップアップが「あ」⇔「A」と切り替わればそれで完了</li>
+</ol>
+
+<p><strong>切り替わらない場合</strong>：既定の「全角半角」エントリは登録されているのにキーコードの内部表現がずれて反応しないことがある（実機で発生した既知のパターン）。次の手順で登録し直す：</p>
+<ol>
+<li>端末から設定ツールを起動：
+<pre><code>kali@kali:~$ fcitx5-configtool</code></pre></li>
+<li>ウィンドウ上部のタブから「<strong>グローバルオプション</strong>」を選ぶ</li>
+<li>「<strong>ホットキー</strong>」セクションの「<strong>入力メソッドの切り替え:</strong>」項目を見る</li>
+<li>既定で <code>Control+スペース</code>、<code>全角半角</code>、<code>ハングル</code> の 3 つが縦に並んでいる。各行の右側にある「<strong>-</strong>」（削除）「<strong>+</strong>」（追加）ボタンを使う</li>
+<li>既存の <code>全角半角</code> 行の右の「<strong>-</strong>」ボタンを押して、いったん削除する</li>
+<li>同じ項目の「<strong>+</strong>」ボタンを押すと、「キーを押してください」状態のダイアログが表示される</li>
+<li>JIS キーボードの <kbd>半角/全角</kbd> キーを 1 回押す。値として再び <code>全角半角</code> が記録される</li>
+<li>右下の「<strong>適用</strong>」→「<strong>閉じる</strong>」でウィンドウを閉じる</li>
+</ol>
+<p>もう一度テキストエディタで <kbd>半角/全角</kbd> を単独で押すと、「あ」⇔「A」が切り替わるようになる（実機で確認済み）。</p>
+</section>
+
+<aside class="note">
+<h2>注意点</h2>
+<ul>
+<li>VirtualBox 上で Kali を動かしている場合、ホスト OS（Windows 等）の IME と Kali の fcitx5 が同時に反応して二重入力になることがある。日本語入力するときは <strong>ホスト側の IME を OFF にしてから</strong> ゲストウィンドウへフォーカスを移す</li>
+<li>ロケールを日本語にした後でも、<code>sudo</code> 経由で実行したコマンドのエラーメッセージは英語のまま出ることがある。これは <code>sudo</code> が安全のため環境変数を引き継がない既定挙動。日本語で見たいときは <code>sudo -E コマンド</code> のように <code>-E</code> を付ける</li>
+<li><code>dpkg-reconfigure keyboard-configuration</code> は GUI セッションと仮想コンソール（<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F2</kbd> 等の黒い画面）の両方の配列を変える。GUI だけ揃えたい場合は Xfce の「キーボード」設定（方法 A）だけにしておく</li>
+<li><kbd>半角/全角</kbd> キーは VirtualBox の「ホストキー」と衝突する設定にはなっていない（既定は右 <kbd>Ctrl</kbd>）が、自分でホストキーを変えている場合は競合に注意</li>
+<li>fcitx5 と旧来の <code>ibus</code> は同時に有効化できない。過去に <code>ibus</code> を入れたことがある環境では <code>sudo apt purge ibus*</code> でいったん削除してから fcitx5 を入れ直すと衝突を避けられる</li>
+<li><code>fcitx5-mozc</code> を apt で入れただけでは、Mozc が fcitx5 の入力メソッド一覧に並ばないことがある（自動追加されるかは環境・バージョン依存）。<kbd>Ctrl</kbd>+<kbd>Space</kbd> を押しても切替インジケータが English のままだったら、まず <code>fcitx5-configtool</code> を開いて左パネルの <code>Default</code> グループに Mozc が並んでいるか確認する</li>
+<li><code>fcitx5-configtool</code> の右下のボタンは「適用」「OK」「閉じる」の 3 つが並ぶ。版によっては「OK」を押してもウィンドウが閉じないことがある。閉じないときは「閉じる」ボタンを押す</li>
+<li>IME 切替時のインジケータ（「あ」「A」）は、パネル右上ではなく <strong>入力中のカーソル付近にポップアップで出る</strong> ことが多い。パネルに見当たらなくても慌てず、テキスト入力欄にフォーカスを合わせて <kbd>Ctrl</kbd>+<kbd>Space</kbd> を押し、カーソル下にポップアップが出るかで判断する</li>
+<li>再起動後にパネルにも fcitx5 の表示が無く、入力切替も効かないように見えるときは、端末で <code>pgrep -l fcitx5</code> を実行する。プロセスが表示されれば fcitx5 自体は動いている。それでも切替できない場合は <code>fcitx5-configtool</code> で入力メソッド一覧を確認する（最頻パターンは Mozc 未登録）</li>
+<li>「グローバルオプション」タブの「入力メソッドの切り替え」「入力メソッドを有効にする」「入力メソッドをオフにする」などの項目に既定で出ている <code>ハングル</code> / <code>ハングル Hanja</code> / <code>ハングル Romaja</code> は <strong>韓国語キーボード用</strong>のキー名。JIS キーボードには物理的に該当キーが無いので押すこともなく、残しておいても日本語入力に影響しない。リストをすっきりさせたい場合は「-」ボタンで削除してもよい</li>
+</ul>
+</aside>
+
+<p class="nav"><a href="index.html">← 記事一覧へ戻る</a></p>
+</article>
+</main>
+</body>
+</html>
