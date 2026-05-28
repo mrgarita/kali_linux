@@ -186,6 +186,7 @@ kali@kali:~$ date
 <li>IME 切替時のインジケータ（「あ」「A」）は、パネル右上ではなく <strong>入力中のカーソル付近にポップアップで出る</strong> ことが多い。パネルに見当たらなくても慌てず、テキスト入力欄にフォーカスを合わせて <kbd>Ctrl</kbd>+<kbd>Space</kbd> を押し、カーソル下にポップアップが出るかで判断する</li>
 <li>再起動後にパネルにも fcitx5 の表示が無く、入力切替も効かないように見えるときは、端末で <code>pgrep -l fcitx5</code> を実行する。プロセスが表示されれば fcitx5 自体は動いている。それでも切替できない場合は <code>fcitx5-configtool</code> で入力メソッド一覧を確認する（最頻パターンは Mozc 未登録）</li>
 <li>「グローバルオプション」タブの「入力メソッドの切り替え」「入力メソッドを有効にする」「入力メソッドをオフにする」などの項目に既定で出ている <code>ハングル</code> / <code>ハングル Hanja</code> / <code>ハングル Romaja</code> は <strong>韓国語キーボード用</strong>のキー名。JIS キーボードには物理的に該当キーが無いので押すこともなく、残しておいても日本語入力に影響しない。リストをすっきりさせたい場合は「-」ボタンで削除してもよい</li>
+<li>本記事の手順を最後まで実施しても、<code>qterminal</code> などのターミナルや、その上で動く <code>vi</code> / <code>nano</code> では <strong>日本語入力ができない</strong>。これは Qt / GTK 用 fcitx5 フロントエンドが別途必要なため。詳細と対策は <a href="kalilinux-terminal-japanese-input.html">「Kali Linux のターミナルや vi / nano で日本語入力する」</a>を参照</li>
 </ul>
 </aside>
 

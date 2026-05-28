@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kali Linux のターミナルや vi / nano で日本語入力する（Qt 用 fcitx5 フロントエンドを追加する） — KaliLinuxことはじめ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+<p class="site-title"><a href="index.html">KaliLinuxことはじめ</a></p>
+</header>
+<main>
+<article>
+<h1>Kali Linux のターミナルや vi / nano で日本語入力する（Qt 用 fcitx5 フロントエンドを追加する）</h1>
+
+<section class="question">
+<h2>質問</h2>
+<p><a href="kalilinux-japanese-input-and-display.html">日本語入力と日本語表示の設定記事</a>の手順を最後まで実施して、<code>Mousepad</code> などの GUI エディタでは <kbd>Ctrl</kbd>+<kbd>Space</kbd> で「あ」⇔「A」が切り替わり日本語入力できる状態になった。しかし Kali Xfce のデフォルトターミナル <code>qterminal</code> を開いてシェルプロンプトの状態で <kbd>Ctrl</kbd>+<kbd>Space</kbd> を押しても、<strong>「あ」インジケータが出ない・日本語入力モードに切り替わらない</strong>。<code>vi</code> や <code>nano</code> を起動して入力しようとしても英数字だけが入力される。先に <code>Mousepad</code> 側で「あ」モードにしておいてから <code>vi</code> を起動しても、<code>vi</code> 上は英数入力になる。環境変数 <code>GTK_IM_MODULE</code> / <code>QT_IM_MODULE</code> / <code>XMODIFIERS</code> はターミナルで確認したところ正しく設定されている（それぞれ <code>fcitx</code> / <code>fcitx</code> / <code>@im=fcitx</code>）。なぜ動かないのか、どこを直せばよいか。</p>
+</section>
+
+<section class="cause">
+<h2>原因（理由）</h2>
+<p>fcitx5 がアプリケーションに日本語入力を提供する仕組みは <strong>3 層構造</strong> になっていて、3 層すべてが揃わないと動かない。既存記事「日本語入力と日本語表示」の手順では <strong>そのうちの 2 層しか入れていない</strong> ため、Qt アプリ（<code>qterminal</code>）が呼べる入力モジュールが存在せず、ターミナル全体で日本語入力ができない状態になっている。</p>
+<ul>
+<li><strong>第 1 層：fcitx5 本体</strong>（<code>fcitx5</code> パッケージ）。入力メソッドフレームワーク。既存記事手順 3 で導入済み。</li>
+<li><strong>第 2 層：変換エンジン</strong>（<code>fcitx5-mozc</code> パッケージ）。ローマ字を「日本語」に変換する Mozc エンジン。既存記事手順 3 で導入済み。</li>
+<li><strong>第 3 層：各 GUI ツールキット用の「フロントエンド」（入力モジュール）</strong>。アプリ側から fcitx5 を呼び出す具体的なライブラリで、ツールキットごとに別パッケージ：
+  <ul>
+  <li>GTK 用 → <code>fcitx5-frontend-gtk3</code> / <code>fcitx5-frontend-gtk4</code></li>
+  <li>Qt 用 → <code>fcitx5-frontend-qt5</code> / <code>fcitx5-frontend-qt6</code></li>
+  <li>古典的な XIM 用 → <code>fcitx5-frontend-xim</code>（古い X アプリ向け）</li>
+  </ul>
+  <strong>これが既存記事の手順では入っていなかった。</strong>
+</li>
+</ul>
+<p>環境変数 <code>QT_IM_MODULE=fcitx</code> は「Qt アプリは fcitx5 を使え」と宣言する役割で、これだけでは入力できない。アプリが「fcitx5 を呼べ」と聞いたあとに <strong>実体である IM モジュール（<code>fcitx5-frontend-qt5</code> など）が存在しないと、ライブラリが見つからずスキップ</strong>されてしまう。Kali Xfce のデフォルトターミナル <code>qterminal</code> は Qt アプリなので、Qt 用フロントエンドが入っていない状態では fcitx5 を呼び出せない。シェルプロンプトでも、その上で動く <code>vi</code> / <code>nano</code> でも、入力経路は同じ「<code>qterminal</code> → 子プロセス」なので、ターミナル自体が fcitx5 を受け取れない限り中で動くものすべて日本語入力できない。</p>
+<p>なお紛らわしい点として、<code>fcitx5-config-qt</code>（既存記事手順 3 で入れた）は <strong>Qt 製の設定 GUI ツール</strong>（<code>fcitx5-configtool</code> コマンド）であって、Qt アプリ全般に入力を提供するフロントエンドとは別物。名前が似ているが役割が違う。</p>
+</section>
+
+<section class="solution">
+<h2>対策（手順）</h2>
+
+<h3>1. 現状を確認する</h3>
+<p>まず fcitx5 本体が動作していて、環境変数も正しいことを再確認する（ここがズレていると別問題なので最初に切り分け）。</p>
+<pre><code>kali@kali:~$ pgrep -l fcitx5
+1323 fcitx5
+kali@kali:~$ echo $GTK_IM_MODULE
+fcitx
+kali@kali:~$ echo $QT_IM_MODULE
+fcitx
+kali@kali:~$ echo $XMODIFIERS
+@im=fcitx</code></pre>
+<p>3 つの環境変数がそれぞれ <code>fcitx</code> / <code>fcitx</code> / <code>@im=fcitx</code> になっていれば、fcitx5 を使う宣言は OK。違う値や空の場合は <a href="kalilinux-japanese-input-and-display.html">既存記事「日本語入力と日本語表示」</a>の手順 3 に戻り、<code>im-config -n fcitx5</code> を実行してから再ログインする。</p>
+<p>使用中のターミナル種別も確認しておく：</p>
+<pre><code>kali@kali:~$ ps -p $PPID -o comm=
+qterminal</code></pre>
+<p><code>qterminal</code>（Qt 系）か、<code>xfce4-terminal</code>（GTK 系）か、<code>gnome-terminal-</code>（GTK 系）かで、必要なフロントエンドが変わる。Kali Xfce のデフォルトは <code>qterminal</code>。</p>
+
+<h3>2. 既存のフロントエンド導入状況と apt の取得可能パッケージを確認する</h3>
+<p>すでに入っている fcitx5 関連パッケージを一覧する：</p>
+<pre><code>kali@kali:~$ apt list --installed 2>/dev/null | grep -i fcitx5
+fcitx5-config-qt/kali-rolling,now 5.1.13-2 amd64 [インストール済み]
+fcitx5-data/kali-rolling,now 5.1.19-1 all [インストール済み、自動]
+fcitx5-modules/kali-rolling,now 5.1.19-1 amd64 [インストール済み、自動]
+fcitx5-mozc/kali-rolling,now 2.29.5160.102+dfsg-1.6 amd64 [インストール済み]
+fcitx5/kali-rolling,now 5.1.19-1 amd64 [インストール済み]
+libfcitx5-qt-data/kali-rolling,now 5.1.13-1 all [インストール済み、自動]
+libfcitx5-qt6-1/kali-rolling,now 5.1.13-1+b1 amd64 [インストール済み、自動]
+libfcitx5config6/kali-rolling,now 5.1.19-1 amd64 [インストール済み、自動]
+libfcitx5core7/kali-rolling,now 5.1.19-1 amd64 [インストール済み、自動]
+libfcitx5utils2/kali-rolling,now 5.1.19-1 amd64 [インストール済み、自動]</code></pre>
+<p>注目すべき点：</p>
+<ul>
+<li><code>fcitx5-frontend-qt5</code> / <code>fcitx5-frontend-qt6</code> / <code>fcitx5-frontend-gtk3</code> / <code>fcitx5-frontend-gtk4</code> など <strong><code>fcitx5-frontend-*</code> が一切入っていない</strong>（これが原因）</li>
+<li><code>libfcitx5-qt6-1</code> は入っているが、これは Qt6 用の <strong>共有ライブラリ</strong>であって IM モジュールではない。フロントエンドパッケージとは別物</li>
+<li><code>fcitx5-config-qt</code> は設定 GUI ツール（<code>fcitx5-configtool</code> コマンド）であり、Qt アプリ全般に入力を提供するフロントエンドではない</li>
+</ul>
+<p>続いて apt 上で取得可能な fcitx5 関連のフロントエンドを確認する：</p>
+<pre><code>kali@kali:~$ apt-cache search fcitx5 | grep -E 'qt|gtk'
+fcitx5-config-qt - configuration tool for Fcitx5 (Qt version)
+fcitx5-frontend-gtk2 - GTK2 IM Module for fcitx5
+fcitx5-frontend-gtk3 - GTK3 IM Module for fcitx5
+fcitx5-frontend-gtk4 - GTK4 IM Module for fcitx5
+fcitx5-frontend-qt5 - Qt5 IM module for fcitx5
+fcitx5-frontend-qt6 - Qt6 IM module for fcitx5
+libfcitx5-qt-data - Qt library and IM module for fcitx5 (data files)
+libfcitx5-qt-dev - Qt library and IM module for fcitx5 (development files)
+libfcitx5-qt1 - Qt library and IM module for fcitx5
+libfcitx5-qt6-1 - Qt6 library and IM module for fcitx5
+libfcitx5-qt6-dev - Qt6 library and IM module for fcitx5 (development files)</code></pre>
+<p>Kali Rolling の現行リポジトリでは、<code>fcitx5-frontend-qt5</code> / <code>fcitx5-frontend-qt6</code> / <code>fcitx5-frontend-gtk3</code> / <code>fcitx5-frontend-gtk4</code> が個別パッケージとして提供されている（Ubuntu 等にある <code>fcitx5-frontend-all</code> のような「全部入りメタパッケージ」は <strong>存在しない</strong>ので、手動で複数指定する）。</p>
+
+<h3>3. Qt 用と GTK 用のフロントエンドをまとめてインストールする</h3>
+<p>Qt 用と GTK 用の最新世代（Qt5/Qt6・GTK3/GTK4）を 1 行でまとめて導入する。<code>qterminal</code> 単体目的なら <code>fcitx5-frontend-qt6</code> だけでも動くが、<strong>将来別のアプリ（GTK 系のターミナルやエディタなど）も使う可能性を考えると、4 つまとめて入れておくのが手戻りが少ない</strong>。</p>
+<pre><code>kali@kali:~$ sudo apt install -y fcitx5-frontend-qt5 fcitx5-frontend-qt6 fcitx5-frontend-gtk3 fcitx5-frontend-gtk4</code></pre>
+<ul>
+<li><code>fcitx5-frontend-qt6</code> = <strong>本記事の問題を直接解決する本命パッケージ</strong>。<code>qterminal</code> など Qt6 アプリ用</li>
+<li><code>fcitx5-frontend-qt5</code> = Qt5 製アプリ（VLC など）用の保険</li>
+<li><code>fcitx5-frontend-gtk3</code> = <code>xfce4-terminal</code>、<code>Mousepad</code>、Firefox など GTK3 アプリ用</li>
+<li><code>fcitx5-frontend-gtk4</code> = 新しめの GTK4 アプリ用</li>
+</ul>
+<p>※ <code>fcitx5-frontend-gtk2</code> は GTK2 という古い世代向けで、現代の Kali では入れる必要がない。</p>
+<p>インストール後、もう一度 <code>apt list --installed</code> で確認しておくと安心：</p>
+<pre><code>kali@kali:~$ apt list --installed 2>/dev/null | grep fcitx5-frontend
+fcitx5-frontend-gtk3/kali-rolling,now ... [インストール済み]
+fcitx5-frontend-gtk4/kali-rolling,now ... [インストール済み]
+fcitx5-frontend-qt5/kali-rolling,now ... [インストール済み]
+fcitx5-frontend-qt6/kali-rolling,now ... [インストール済み]</code></pre>
+<p>4 つとも <code>[インストール済み]</code> と表示されていれば導入完了。</p>
+
+<h3>4. fcitx5 を再起動して新フロントエンドを認識させる</h3>
+<p>フロントエンドを入れただけでは、すでに動いているアプリ（特に <code>fcitx5</code> 本体と、現在開いている <code>qterminal</code>）はまだ新しいモジュールを知らない。再起動して読み込ませる。最も確実なのは <strong>OS ごとログアウトして再ログイン</strong>：</p>
+<ul>
+<li>画面右上のメニュー（ユーザー名／電源アイコン） →「ログアウト」→ ダイアログでさらに「ログアウト」</li>
+<li>lightdm のログイン画面に戻ったら、再度ログインする</li>
+</ul>
+<p>ログアウトせずに済ませたい場合は、<code>fcitx5</code> プロセスだけ再起動する：</p>
+<pre><code>kali@kali:~$ fcitx5 -r &amp;</code></pre>
+<p><code>-r</code> は再起動オプション、末尾の <code>&amp;</code> はターミナルに制御を戻すためのバックグラウンド実行指定。実行直後にプロセス番号らしき表示が 1 行出るが、そのまま <kbd>Enter</kbd> でプロンプトに戻る。ただし、すでに開いている <code>qterminal</code> ウィンドウは <strong>その時点では新フロントエンドを取り込まない</strong>（プロセス起動時に IM モジュールを読み込むため）。<code>fcitx5 -r</code> したあと、<strong>新しい <code>qterminal</code> ウィンドウを開き直して</strong>そちらで試す。</p>
+
+<h3>5. 動作確認</h3>
+<p>新しく開いた <code>qterminal</code> のシェルプロンプトで、まずインジケータが出るかを確認する：</p>
+<pre><code>kali@kali:~$ </code></pre>
+<p>この状態で <kbd>Ctrl</kbd>+<kbd>Space</kbd> を押す。<strong>カーソル付近に小さなポップアップで「あ」</strong>が出れば、ターミナル経由で fcitx5 が呼ばれている。試しに <code>nihongo</code> と打ち <kbd>Space</kbd> で「日本語」に変換される。<kbd>Enter</kbd> 確定で、シェルプロンプトの位置に <code>日本語</code> という文字列が入力される（コマンドとしては不正なので <kbd>Ctrl</kbd>+<kbd>C</kbd> で取り消してよい）。</p>
+<p>続いて <code>vi</code> で日本語入力を試す：</p>
+<pre><code>kali@kali:~$ vi /tmp/japanese-test.txt</code></pre>
+<p><code>vi</code> が開いたら：</p>
+<ol>
+<li><kbd>i</kbd> を押して挿入モード（画面下に <code>-- INSERT --</code> 表示）に入る</li>
+<li><kbd>Ctrl</kbd>+<kbd>Space</kbd> でインジケータを「あ」に切り替え</li>
+<li><code>nihongo</code> と打ち <kbd>Space</kbd> で「日本語」に変換、<kbd>Enter</kbd> で確定</li>
+<li><kbd>Esc</kbd> でノーマルモードに戻り、<code>:wq</code> と打ち <kbd>Enter</kbd> で保存終了</li>
+</ol>
+<p>書き込んだ内容を確認：</p>
+<pre><code>kali@kali:~$ cat /tmp/japanese-test.txt
+日本語</code></pre>
+<p><code>nano</code> でも同様に確認できる：</p>
+<pre><code>kali@kali:~$ nano /tmp/japanese-test2.txt</code></pre>
+<ul>
+<li><code>nano</code> は起動直後がそのまま入力状態（モード切替なし）</li>
+<li><kbd>Ctrl</kbd>+<kbd>Space</kbd> で「あ」モードへ → <code>nihongo</code> → <kbd>Space</kbd> → <kbd>Enter</kbd></li>
+<li><kbd>Ctrl</kbd>+<kbd>O</kbd> → <kbd>Enter</kbd> で保存、<kbd>Ctrl</kbd>+<kbd>X</kbd> で終了</li>
+</ul>
+<p>すべて日本語が入力できれば対策完了。</p>
+</section>
+
+<aside class="note">
+<h2>注意点</h2>
+<ul>
+<li>ターミナルで日本語が <strong>表示</strong> されるためには、ロケールが <code>ja_JP.UTF-8</code> で、日本語フォント（<code>fonts-noto-cjk</code>）が入っていること。これは <a href="kalilinux-japanese-input-and-display.html">日本語入力と日本語表示の記事</a>の手順 1 で済んでいるはず。表示が <code>□</code>（豆腐）になる場合はそちらに戻る</li>
+<li><code>fcitx5 -r &amp;</code> で再起動した直後、<strong>すでに開いている <code>qterminal</code> ウィンドウでは新フロントエンドが効かない</strong>。プロセス起動時に IM モジュールを読み込む仕組みなので、必ず <strong>新しい <code>qterminal</code> ウィンドウを開き直して</strong>から動作確認する。確実に全アプリへ反映させるならログアウト → 再ログインが安全</li>
+<li><code>fcitx5-config-qt</code>（設定ツール、<code>fcitx5-configtool</code> コマンド）と <code>fcitx5-frontend-qt5</code> / <code>fcitx5-frontend-qt6</code>（入力モジュール）は <strong>別パッケージ</strong>。前者は Qt で作られた設定 GUI、後者は Qt アプリ全般に入力を提供する実体。名前が似ているので混同しないこと</li>
+<li>Kali Rolling の現行リポジトリには <code>fcitx5-frontend-all</code> のような全部入りメタパッケージは <strong>存在しない</strong>（他ディストリの解説記事で見かけるが、Kali では使えない）。手順 3 のように個別パッケージを並べて指定する</li>
+<li><code>vi</code> / <code>nano</code> が <strong>書き込んだ</strong>ファイルが文字化けする場合、ファイル側のエンコーディングが UTF-8 でない可能性がある。<code>file /tmp/japanese-test.txt</code> で確認し、UTF-8 でなければ <code>iconv -f &lt;元エンコーディング&gt; -t UTF-8 &lt;ファイル&gt;</code> で変換する</li>
+<li>Vim 8 以降は既定で UTF-8 を扱えるので <code>~/.vimrc</code> の追加設定は通常不要。古い設定が残っていて文字化けする場合のみ <code>~/.vimrc</code> に <code>set encoding=utf-8</code> と <code>set fileencoding=utf-8</code> を書く</li>
+<li><code>tmux</code> や <code>screen</code> 経由で動かしている <code>vi</code> / <code>nano</code> では、tmux 側の入力ハンドリングが介在するため、本記事の対策だけでは解決しないことがある。tmux の <code>set -g default-terminal "xterm-256color"</code> や <code>setw -g utf8 on</code>（古い tmux）等の設定を別途確認する</li>
+<li><code>ssh</code> でリモートホストに接続している場合、リモート側に fcitx5 は <strong>必要ない</strong>。ローカルの fcitx5 がローカルの <code>qterminal</code> 上で動作し、変換後の日本語文字列が ssh 経由でリモートシェルへ送信される構造。リモート側に日本語ロケールが入っていれば表示・入力ともに問題ない</li>
+<li>Wayland セッションでは入力周りの挙動が異なる。Kali Xfce のデフォルトは X11 なので通常気にしなくてよいが、確認したい場合は <code>echo $XDG_SESSION_TYPE</code> を実行（<code>x11</code> なら本記事の手順通り）</li>
+<li><code>qterminal</code> ではなく <code>xfce4-terminal</code>（GTK 系）や <code>gnome-terminal</code> を主に使う環境でも、手順 3 で <code>fcitx5-frontend-gtk3</code> / <code>fcitx5-frontend-gtk4</code> を入れていれば同じ要領で日本語入力できる</li>
+</ul>
+</aside>
+
+<p class="nav"><a href="index.html">← 記事一覧へ戻る</a></p>
+</article>
+</main>
+</body>
+</html>
