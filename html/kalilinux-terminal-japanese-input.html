@@ -158,6 +158,7 @@ fcitx5-frontend-qt6/kali-rolling,now ... [インストール済み]</code></pre>
 <li><code>ssh</code> でリモートホストに接続している場合、リモート側に fcitx5 は <strong>必要ない</strong>。ローカルの fcitx5 がローカルの <code>qterminal</code> 上で動作し、変換後の日本語文字列が ssh 経由でリモートシェルへ送信される構造。リモート側に日本語ロケールが入っていれば表示・入力ともに問題ない</li>
 <li>Wayland セッションでは入力周りの挙動が異なる。Kali Xfce のデフォルトは X11 なので通常気にしなくてよいが、確認したい場合は <code>echo $XDG_SESSION_TYPE</code> を実行（<code>x11</code> なら本記事の手順通り）</li>
 <li><code>qterminal</code> ではなく <code>xfce4-terminal</code>（GTK 系）や <code>gnome-terminal</code> を主に使う環境でも、手順 3 で <code>fcitx5-frontend-gtk3</code> / <code>fcitx5-frontend-gtk4</code> を入れていれば同じ要領で日本語入力できる</li>
+<li><strong>嬉しい副作用：変換中の文字の見え方が改善する</strong>。手順 3 で GTK / Qt 用フロントエンドを入れると、ターミナルでの日本語入力が可能になるだけでなく、<strong><code>Mousepad</code> など以前から日本語入力できていた GUI アプリの変換中表示も見やすくなる</strong>。以前は変換途中の <code>にほんご</code> がカーソルのすぐ下に独立した小さなポップアップウィンドウとして出ていたが（fcitx5 用語で <strong>OverTheSpot</strong> モード）、フロントエンド導入後は <strong>アプリのテキスト入力欄の中、カーソルの位置に下線付きで直接</strong>表示されるようになる（<strong>OnTheSpot</strong> モード／インライン変換）。確定すると下線が外れて通常のテキストになる。<code>fcitx5-frontend-gtk3</code> が GTK3 アプリ（<code>Mousepad</code>、Firefox など）に、<code>fcitx5-frontend-qt5</code> / <code>fcitx5-frontend-qt6</code> が Qt アプリ（<code>qterminal</code> など）に、それぞれ直接「プリエディット API」で繋がるためにこの挙動が可能になる</li>
 </ul>
 </aside>
 
