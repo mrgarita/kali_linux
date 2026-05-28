@@ -132,7 +132,11 @@ kali@kali:~$ date
 <ol>
 <li>右パネルの「有効な入力メソッド」リストから <strong>Mozc</strong> をシングルクリックで選択する</li>
 <li>左右パネルの間にある中央の「<strong>←</strong>」ボタン（左向き矢印）を押す</li>
-<li>左パネルの <code>Default</code> 配下に <code>Keyboard - English (US)</code> と <code>Mozc</code> の両方が並んでいることを目視で確認</li>
+<li>左パネルの <code>Default</code> 配下に <code>Keyboard - English (US)</code> と <code>Mozc</code> の両方が並んでいることを目視で確認する。<code>Keyboard - English (US)</code> は <strong>削除せずそのまま残す</strong>（理由は本記事末尾の「注意点」参照）</li>
+<li><strong>並び順を確認する</strong>。上から順に <code>Keyboard - English (US)</code>、<code>Mozc</code> になっているか。逆順（<code>Mozc</code> が上）になっている場合は、左パネルで <code>Mozc</code> を選んでから、左パネル右側にある「<strong>↓</strong>」ボタンで下に動かす（または <code>Keyboard - English (US)</code> を選んで「<strong>↑</strong>」で上に動かしてもよい）</li>
+</ol>
+<p><strong>※ なぜこの順序か</strong>：左パネルの <strong>一番上のエントリが「セッション開始時の初期入力メソッド」</strong> になる。<code>Mozc</code> を上にすると、テキストエディタを開いた瞬間から日本語入力モード（「あ」）で始まり、コマンドや英文を打つたびに <kbd>Ctrl</kbd>+<kbd>Space</kbd> で英数モードへ切り替える煩わしさが出る。<code>Keyboard - English (US)</code> を上にしておくと、起動時は英数直接入力モード（「A」）で始まり、日本語を打ちたいときだけ <kbd>Ctrl</kbd>+<kbd>Space</kbd> で <code>Mozc</code> に切り替える運用になる（日常的に Linux コマンドラインも触る前提では、こちらの順序が自然）。</p>
+<ol start="5">
 <li>右下の「<strong>適用</strong>」ボタンを押して設定を反映</li>
 <li>続いて右下の「<strong>閉じる</strong>」ボタンでウィンドウを閉じる（右下のボタンは「適用」「OK」「閉じる」の 3 つが並ぶが、「OK」を押しても <strong>ウィンドウが閉じない</strong> ことがあるので明示的に「閉じる」を押す）</li>
 </ol>
@@ -177,6 +181,7 @@ kali@kali:~$ date
 <li><kbd>半角/全角</kbd> キーは VirtualBox の「ホストキー」と衝突する設定にはなっていない（既定は右 <kbd>Ctrl</kbd>）が、自分でホストキーを変えている場合は競合に注意</li>
 <li>fcitx5 と旧来の <code>ibus</code> は同時に有効化できない。過去に <code>ibus</code> を入れたことがある環境では <code>sudo apt purge ibus*</code> でいったん削除してから fcitx5 を入れ直すと衝突を避けられる</li>
 <li><code>fcitx5-mozc</code> を apt で入れただけでは、Mozc が fcitx5 の入力メソッド一覧に並ばないことがある（自動追加されるかは環境・バージョン依存）。<kbd>Ctrl</kbd>+<kbd>Space</kbd> を押しても切替インジケータが English のままだったら、まず <code>fcitx5-configtool</code> を開いて左パネルの <code>Default</code> グループに Mozc が並んでいるか確認する</li>
+<li><code>fcitx5-configtool</code> の <code>Default</code> グループに最初から入っている <code>Keyboard - English (US)</code> は、Mozc を追加した後も <strong>削除せずそのまま残しておく</strong>。これは「日本語変換をかけない直接入力モード」の役割で、<kbd>Ctrl</kbd>+<kbd>Space</kbd> 切替時の「英数入力側」がこのエントリになる。消してしまうと Mozc 単独構成になり、ローマ字でそのまま英文を打つときも Mozc 経由になって扱いにくくなる。なお <code>English (US)</code> という名前だが <strong>これは fcitx5 内部の入力メソッド名であって、物理キーボードの配列を変える設定ではない</strong>。物理配列は手順 2 で <code>Japanese (OADG 109A)</code> に揃え済みなので、JIS キーボードでもそのままで問題なく刻印通りの記号が出る。見た目を揃えたい場合は <code>Keyboard - Japanese</code> を追加して <code>Keyboard - English (US)</code> を削除してもよいが、挙動はほぼ同じ</li>
 <li><code>fcitx5-configtool</code> の右下のボタンは「適用」「OK」「閉じる」の 3 つが並ぶ。版によっては「OK」を押してもウィンドウが閉じないことがある。閉じないときは「閉じる」ボタンを押す</li>
 <li>IME 切替時のインジケータ（「あ」「A」）は、パネル右上ではなく <strong>入力中のカーソル付近にポップアップで出る</strong> ことが多い。パネルに見当たらなくても慌てず、テキスト入力欄にフォーカスを合わせて <kbd>Ctrl</kbd>+<kbd>Space</kbd> を押し、カーソル下にポップアップが出るかで判断する</li>
 <li>再起動後にパネルにも fcitx5 の表示が無く、入力切替も効かないように見えるときは、端末で <code>pgrep -l fcitx5</code> を実行する。プロセスが表示されれば fcitx5 自体は動いている。それでも切替できない場合は <code>fcitx5-configtool</code> で入力メソッド一覧を確認する（最頻パターンは Mozc 未登録）</li>
