@@ -21,21 +21,22 @@
 
 <section class="cause">
 <h2>原因（理由）</h2>
-<p>「書き場所がぜんぶ違っていた」のと「<code>xset</code> の設定を後から上書きする別プロセスがいる」の 2 つが同時に起きていることが多い。順に整理する。</p>
+<p>「書き場所がぜんぶ違っていた」のと「<code>xset</code> の設定とは別経路で画面を消しに来るプロセスがいる」の 2 つが同時に起きている。とくに後者は <strong>「ディスプレイ電源管理（DPMS）を OFF にしたのに、まだ 5 分くらいで黒くなる」</strong> の正体になる。順に整理する。</p>
 <ul>
 <li><strong><code>~/.bashrc</code> / <code>~/.zshrc</code> は対話シェル起動時にしか読まれない</strong>。GUI でログインしてデスクトップ（Xfce など）が立ち上がる経路では実行されない。だからここに <code>xset -dpms</code> を書いても、「ターミナルを開いた瞬間だけ」効く形になり、GUI セッション全体には反映されない。</li>
 <li><strong><code>~/.profile</code> / <code>~/.zprofile</code> は「ログインシェル」用</strong>。Kali の既定の <code>lightdm</code>（GUI ログイン画面）から Xfce セッションを開始する経路では、シェルではなく X セッションスクリプトが起動するため、これらのファイルは通常読まれない（テキストログインからの <code>startx</code> など、限られた経路でしか実行されない）。</li>
 <li><strong><code>/etc/rc.local</code> は X が起動するより前に systemd から実行される</strong>。<code>xset</code> は X サーバに対して話しかけるコマンドなので、まだ X が無い段階で実行されると <code>unable to open display</code> エラーで失敗してそのまま終わる。<code>DISPLAY</code> 環境変数も認証情報（<code>~/.Xauthority</code>）もない段階だからどうやっても効かない。</li>
-<li><strong>そもそも画面消灯の仕組みが複数あり、別々に止めないと黒くなる</strong>。
+<li><strong>そもそも画面を黒くしてくる仕組みが 4 系統あり、別々に止めないと止まらない</strong>。現行 Kali Xfce では次の 4 つが独立して動いている：
   <ul>
-  <li><strong>X 組み込みの DPMS</strong>（Display Power Management Signaling）。<code>xset -dpms</code> で無効化する。</li>
-  <li><strong>X 組み込みのスクリーンセーバ</strong>。<code>xset s off</code>（タイマー停止）と <code>xset s noblank</code>（ブランク描画停止）で止める。DPMS と独立しているので両方やる必要がある。</li>
-  <li><strong>Xfce の電源管理デーモン <code>xfce4-power-manager</code></strong>。これが「最大の上書き元」で、自身が独自に DPMS の有効化／タイムアウト値を管理している。ログイン直後にユーザーが <code>xset</code> で切っても、しばらくすると <code>xfce4-power-manager</code> が自分の設定で <strong>DPMS を再び有効化してしまう</strong>。これを切らない限り <code>xset -dpms</code> を <code>~/.bashrc</code> 等に書いても泥沼になる。</li>
-  <li><strong>画面ロッカー <code>light-locker</code> や <code>xscreensaver</code></strong>。これらが入っていると DPMS とは別の経路で画面をブラックアウト＆ロックする。</li>
+  <li><strong>X 組み込みの DPMS</strong>（Display Power Management Signaling）。モニタへ省電力信号を送る。<code>xset -dpms</code> で無効化する。</li>
+  <li><strong>X 組み込みのスクリーンセーバ</strong>。<code>xset s off</code>（タイマー停止）と <code>xset s noblank</code>（ブランク描画停止）で止める。DPMS と独立。</li>
+  <li><strong>Xfce の電源管理デーモン <code>xfce4-power-manager</code></strong>。DPMS の有効化／タイムアウトを独自に管理し、ログイン後に <code>xset</code> の設定を上書きしてくる。「電源管理」設定アプリで OFF にする。</li>
+  <li><strong>★ Xfce のスクリーンセーバ <code>xfce4-screensaver</code>（最大の主犯）</strong>。<code>xfce4-power-manager</code> とは <strong>完全に別のパッケージ／別のプロセス</strong>。デフォルトで有効になっており、アイドル <strong>5 分</strong> でテーマ「ブランク画面」を表示するため画面が真っ黒になる。<code>xset s off</code> も <code>xfce4-power-manager</code> 側の設定も <strong>ここには効かない</strong>。これを止めない限り「DPMS を OFF にしてもまだ黒くなる」状態が続く。</li>
   </ul>
 </li>
+<li><strong><code>light-locker</code> や <code>xscreensaver</code> が動いている環境もある</strong>。<code>xfce4-screensaver</code> を入れる前の Kali や、ユーザーが意図的に古典的なスクリーンセーバを入れた環境では、これらが <code>xfce4-screensaver</code> の代わりに（あるいは併存して）画面をブラックアウト＆ロックする。</li>
 </ul>
-<p>つまり「正しい場所に書く」だけでなく、「他に消そうとしてくるプロセスをまず黙らせる」ことが必要。以下の対策では、最初に GUI 電源管理を切り（恒久的な上書き元を止め）、次に念のため X セッション開始時に <code>xset</code> を流す形で二重に対策する。</p>
+<p>つまり「正しい場所に書く」だけでなく、「画面を消しに来るプロセスを <strong>2 系統まとめて</strong> 黙らせる」ことが必要。以下の対策では、まず GUI で <code>xfce4-power-manager</code> を切り（DPMS の上書き元を止め）、続いて <code>xfce4-screensaver</code> を切り（5 分でブランク画面を出すプロセスを止め）、最後に <code>~/.xsessionrc</code> で <code>xset</code> 系の保険を入れる、という 3 段構えにする。</p>
 </section>
 
 <section class="solution">
@@ -59,33 +60,44 @@ DPMS (Display Power Management Signaling):
 <li><code>prefer blanking: yes</code> = 発動時に画面を真っ黒に塗りつぶす（これが「黒くなる」の正体の一つ）</li>
 <li><code>DPMS is Enabled</code> = モニタ電源管理が有効。<code>Standby/Suspend/Off</code> の各秒数で段階的にモニタへ省電力信号を送る</li>
 </ul>
-<p>対策後にもう一度 <code>xset q</code> を実行して、<code>DPMS is Disabled</code>／<code>timeout: 0</code>／<code>prefer blanking: no</code> になっていれば成功、というのが確認の指針になる。</p>
+<p>対策後にもう一度 <code>xset q</code> を実行して、<code>DPMS is Disabled</code>／<code>timeout: 0</code>／<code>prefer blanking: no</code> になっていれば「X 側」は無効化できたという確認になる。</p>
+<p><strong>注意</strong>：<code>xset q</code> には <code>xfce4-screensaver</code> の状態は <strong>映らない</strong>。<code>xset q</code> 上は無効化されているように見えても画面が黒くなる場合は、原因は <code>xfce4-screensaver</code> 側にあるので、手順 3 を必ず実施する。</p>
 
-<h3>2. Xfce の電源管理を GUI で無効化する（推奨）</h3>
-<p>Kali のデフォルトデスクトップ Xfce では、<code>xfce4-power-manager</code> が DPMS を独自に管理している。これが <code>xset</code> の設定を上書きしてくるので、まずここを止めるのが最優先。</p>
+<h3>2. Xfce の電源管理を GUI で無効化する</h3>
+<p>Kali のデフォルトデスクトップ Xfce では、<code>xfce4-power-manager</code> が DPMS を独自に管理している。これが <code>xset</code> の設定を上書きしてくるので、まずここを止める。</p>
 <p>「アプリケーション」メニュー →「設定」→「電源管理」を開く。コマンドからも起動できる：</p>
 <pre><code>kali@kali:~$ xfce4-power-manager-settings</code></pre>
-<p>開いたウィンドウは上部にタブが並んでいる。次の通り設定する：</p>
+<p>「電源管理」ウィンドウは上部に <strong>「一般」「システム」「ディスプレイ」「デバイス」</strong> の 4 タブが並ぶ。「ディスプレイ」タブを開く。</p>
+<p>「ディスプレイ」タブの中はさらに <strong>「バッテリ駆動」「AC 接続」のサブタブ</strong> に分かれており、デスクトップ機・ノート機どちらでも両方の設定欄が存在する。<strong>両方のサブタブで</strong> 次の操作を行う：</p>
 <ul>
-<li><strong>「ディスプレイ」タブ</strong>
-  <ul>
-  <li>「ディスプレイ電源管理を有効にする」（<em>Display power management</em>）のチェックを <strong>外す</strong></li>
-  <li>その下の「ブランク表示までの時間」「モニタをスリープ状態にするまでの時間」「モニタの電源を切るまでの時間」のスライダはすべて左端（<strong><code>無効</code></strong> ／ <code>0</code> 分）に寄せる</li>
-  </ul>
-</li>
-<li><strong>「セキュリティ」タブ</strong>
-  <ul>
-  <li>「セッションがアイドルになったら画面をロックする」（<em>Automatically lock the session</em>）を <strong>「決して」</strong> に設定する</li>
-  </ul>
-</li>
+<li>欄一番上の「<strong>ディスプレイ電源管理</strong>」右端のトグルスイッチを押して <strong>OFF</strong>（灰色側）にする</li>
+<li>OFF にすると下の「スリープするまでの時間」「電源を切断するまでの時間」のスライダは自動的に無効化（灰色表示）される。スライダ自体の値はそのままで構わない</li>
+<li>サブタブを「AC 接続」に切り替え、同じくトグルを OFF にする（バッテリ駆動／AC 接続のどちらか一方しか OFF にしないと、もう一方の電源状態のときに発動する）</li>
 </ul>
 <p>右下の「閉じる」を押すと設定はその場で保存され、再ログイン後も保持される。</p>
 <p>確認のため、もう一度 <code>xset q</code> を実行する：</p>
 <pre><code>kali@kali:~$ xset q</code></pre>
-<p>出力中の <code>DPMS</code> セクションが <code>DPMS is Disabled</code> に変わっていれば、<code>xfce4-power-manager</code> 側はもう画面を消しに来ない。</p>
+<p>出力中の <code>DPMS</code> セクションが <code>DPMS is Disabled</code> に変わっていれば、<code>xfce4-power-manager</code> 側はもう DPMS を有効化しに来ない。</p>
+<p><strong>ただし、ここまでで止まるのは「DPMS によるモニタ電源オフ」だけ</strong>。多くの環境では <code>xfce4-screensaver</code> が別途動いていて、こちらが <strong>アイドル 5 分でブランク画面（真っ黒）を表示</strong> してくる。「DPMS を切ったのにまだ 5 分くらいで黒くなる」場合は手順 3 を続けて実施する。</p>
 
-<h3>3. ログインのたびに <code>xset</code> を自動実行させる（<code>~/.xsessionrc</code>）</h3>
-<p>手順 2 だけで止まる環境も多いが、別の更新で電源管理が再有効化されたり、X 組み込みスクリーンセーバ（<code>xset s</code>）が独立に動いたりすることがある。保険として、<strong>X セッションが開始されるたびに <code>xset</code> を流す</strong> 仕組みを入れておく。</p>
+<h3>3. Xfce のスクリーンセーバを GUI で無効化する</h3>
+<p>こちらが <strong>「DPMS を OFF にしてもまだ黒くなる」の本丸</strong>。<code>xfce4-screensaver</code> は <code>xfce4-power-manager</code> とは別パッケージ・別プロセスで、設定 GUI も別ウィンドウ。</p>
+<p>「電源管理」ウィンドウの <strong>下部にある「スクリーンセーバーの管理(S)」</strong> ボタンを押す（先ほどの「電源管理」ウィンドウをまだ開いているならそのまま、閉じてしまった場合は手順 2 で開き直す）。コマンドから直接開くこともできる：</p>
+<pre><code>kali@kali:~$ xfce4-screensaver-preferences</code></pre>
+<p>別ウィンドウ「<strong>スクリーンセーバーの設定</strong>」が開く。タブは <strong>「スクリーンセーバー」「ロック画面」</strong> の 2 つ。</p>
+<p><strong>「スクリーンセーバー」タブ</strong>で次のどちらかを OFF にする：</p>
+<ul>
+<li>一番上の「<strong>スクリーンセーバーを有効にする</strong>」右端のトグルを押して OFF にする（推奨。スクリーンセーバ機能そのものを止める）</li>
+<li>または、中段の「<strong>コンピューターがアイドル状態のときにスクリーンセーバーをアクティブにする</strong>」トグルを OFF にする（アイドルでの自動発動だけを止め、機能自体は残す）</li>
+</ul>
+<p>テーマ一覧で「ブランク画面」が選ばれていることが、5 分後に「真っ黒」になっていた直接の原因（ブランク画面 = 画面を黒一色で塗りつぶすテーマ）。トグルを OFF にすれば、テーマ選択に関係なく発動しなくなる。</p>
+<p><strong>「ロック画面」タブ</strong>もついでに開いて、自動ロックのトグルが ON になっていたら OFF にする。VM 上の学習用 Kali では自動ロックは煩わしいだけなので切ってよい（共用 PC や業務用途では残す判断もあり。本記事末尾の「注意点」参照）。</p>
+<p>右下の「閉じる」で確定。設定はその場で反映され、ログイン後も保持される。</p>
+<p>確認：ターミナルや Mousepad を開いた状態で <strong>5 分以上放置</strong>し、画面が黒くならなければ成功。</p>
+
+<h3>4. ログインのたびに <code>xset</code> を自動実行させる（<code>~/.xsessionrc</code>）</h3>
+<p>手順 2＋手順 3 だけで止まる環境がほとんどだが、更新で電源管理が再有効化されたり、X 組み込みスクリーンセーバ（<code>xset s</code>）が独立に動いたりすることもある。保険として、<strong>X セッションが開始されるたびに <code>xset</code> を流す</strong> 仕組みを入れておく。</p>
+<p>※ ここで設定するのは <strong>X 組み込みの DPMS とスクリーンセーバへの保険</strong> であって、<code>xfce4-screensaver</code> には効かない（あれは手順 3 で止める仕組み）。</p>
 <p>Debian 系（Kali を含む）の GUI ログイン経路で確実に読まれるのは、ホームディレクトリの <code>~/.xsessionrc</code> である。<code>~/.bashrc</code> や <code>~/.profile</code> ではなく、これを作る。</p>
 <p>テキストエディタで新規作成する：</p>
 <pre><code>kali@kali:~$ nano ~/.xsessionrc</code></pre>
@@ -113,27 +125,29 @@ xset s noblank   # ブランク描画も停止</code></pre>
 <li><code>Screen Saver: timeout: 0</code> かつ <code>prefer blanking: no</code></li>
 </ul>
 
-<h3>4. それでも数分で黒くなる場合：画面ロッカーを確認する</h3>
-<p>DPMS とスクリーンセーバを両方止めても、別に動いている画面ロッカーが「真っ黒＆ロック」をかけにくることがある。代表的なのは <code>light-locker</code>（lightdm 付属）と <code>xscreensaver</code>。動いているか確認する：</p>
+<h3>5. それでも黒くなる場合：light-locker / xscreensaver を確認する</h3>
+<p>現行 Kali Xfce では通常 <code>xfce4-screensaver</code> が画面ロッカー役を担っており、<code>light-locker</code> や <code>xscreensaver</code> は既定では入っていない。ただし古い手順を踏襲して入れた環境、別ディストリから引っ越した環境では、これらが独立に「真っ黒＆ロック」をかけてくることがある。プロセスが動いているか確認する：</p>
 <pre><code>kali@kali:~$ pgrep -l light-locker
-1422 light-locker
 kali@kali:~$ pgrep -l xscreensaver</code></pre>
-<p>番号付きで名前が出れば、そのプロセスが動いている（上の例では <code>light-locker</code> が動いていて、<code>xscreensaver</code> は何も出ないので動いていない）。</p>
-<p><strong><code>light-locker</code> が動いている場合</strong>：手順 2 の Xfce「電源管理」設定で「セキュリティ」タブの自動ロックを「決して」にしていれば、<code>light-locker</code> もアイドルロックを発動しなくなる。すでに動いているプロセスを今すぐ止めたい場合は、いったんログアウトして再ログインすれば設定が反映された状態で起動し直る。</p>
+<p>何も表示されなければ、両方とも動いていない（＝この手順は無視してよい）。番号付きで名前が出れば、そのプロセスが動いている。</p>
+<p><strong><code>light-locker</code> が動いている場合</strong>：いま動いているものを停止：</p>
+<pre><code>kali@kali:~$ pkill light-locker</code></pre>
+<p>自動起動から外したい場合は「アプリケーション」メニュー →「設定」→「セッションと起動」→「自動開始アプリケーション」タブを開き、<code>light-locker</code> の行のチェックを外す。</p>
 <p><strong><code>xscreensaver</code> が動いている場合</strong>：いま動いているものを止める：</p>
 <pre><code>kali@kali:~$ xscreensaver-command -exit</code></pre>
-<p>次回ログイン時にも起動させたくない場合は、「アプリケーション」メニュー →「設定」→「セッションと起動」→「自動開始アプリケーション」タブを開き、<code>xscreensaver</code> の行のチェックを外す。</p>
+<p>次回ログイン時にも起動させたくない場合は、同じく「セッションと起動」の「自動開始アプリケーション」タブから <code>xscreensaver</code> のチェックを外す。</p>
 </section>
 
 <aside class="note">
 <h2>注意点</h2>
 <ul>
+<li><strong>「<code>xset q</code> は <code>DPMS is Disabled</code> なのにまだ黒くなる」ときは、ほぼ <code>xfce4-screensaver</code> が原因</strong>。手順 3 を実施する。それでも黒くなる場合は <code>pgrep -l screensaver</code> や <code>pgrep -l locker</code> でほかに同種のプロセスが動いていないか確認する。</li>
+<li><strong><code>xfce4-power-manager</code> と <code>xfce4-screensaver</code> は別パッケージ・別プロセス</strong>。「電源管理」設定アプリと「スクリーンセーバの管理」設定アプリがそれぞれ独立した GUI を持つので、どちらか片方だけ無効化しても黒画面は止まらない。両方 OFF にする必要がある。</li>
 <li><strong>なぜ <code>.bashrc</code> / <code>.profile</code> / <code>/etc/rc.local</code> に書いても効かないのか、3 行まとめ</strong>：<code>.bashrc</code> は GUI ログイン経路では実行されない／<code>.profile</code> は lightdm から Xfce を起動する経路では読まれない／<code>/etc/rc.local</code> は X 起動前に走るので <code>xset</code> がそもそも繋がる先が無い。GUI セッション開始時に確実に読まれる場所は <code>~/.xsessionrc</code>。</li>
-<li><strong>設定を入れたあとは <code>xset q</code> で必ず再確認する</strong>。<code>DPMS is Disabled</code> と <code>timeout: 0</code> が揃っていれば、少なくとも X とユーザー設定の側からは画面を消しに行かない状態になっている。</li>
-<li><strong>GNOME / KDE では電源管理デーモンが違う</strong>。Kali を Xfce 以外の派生版で使っている場合、上書きしてくるのは <code>xfce4-power-manager</code> ではなく <code>gnome-settings-daemon</code>（GNOME）／<code>powerdevil</code>（KDE）になる。GUI 設定の場所は各デスクトップ環境の「電源管理」「省電力」「ディスプレイ」設定にあるので、そこで「画面の電源を切る」「ブランクスクリーン」を <code>無効</code> ／<code>しない</code> に変更する。<code>~/.xsessionrc</code> の方は同じファイルでそのまま使える。</li>
-<li><strong>VirtualBox 上で動かしている場合、ホスト OS 側の電源設定も影響する</strong>。Kali（ゲスト）の DPMS を完全に止めても、Windows（ホスト）の「設定」→「電源とバッテリー」→「画面とスリープ」で「画面をオフにする」が短時間に設定されていると、ホストの画面が消えてゲストも見えなくなる。両方の設定を見ること。</li>
-<li><strong>Wayland セッションでは <code>xset</code> 自体が効かない</strong>。Kali Xfce のデフォルトは X11 なので通常は関係ないが、念のため確認したい場合はターミナルで <code>echo $XDG_SESSION_TYPE</code> を実行し、出力が <code>x11</code> なら <code>xset</code> 系の手順がそのまま効く。<code>wayland</code> と出る場合は手順 3 が無効で、各デスクトップ環境の GUI 電源管理設定（手順 2）のみで止める必要がある。</li>
-<li><strong>学習用 VM 向けの設定であり、業務環境ではそのままコピーしないこと</strong>。画面の自動ブランク／自動ロックは席を離れた間の覗き見対策として重要な機能。共用 PC や業務利用では「画面ロック（手順 2 のセキュリティタブ）は残し、ディスプレイ電源管理（同・ディスプレイタブ）だけ無効化する」運用も検討する。</li>
+<li><strong>GNOME / KDE では別のデーモンになる</strong>。Kali を Xfce 以外の派生版で使っている場合、画面を消してくる主犯は <code>xfce4-*</code> ではなく <code>gnome-settings-daemon</code>（GNOME）／<code>powerdevil</code>（KDE）と各環境のスクリーンロッカー（<code>gnome-screensaver</code> ／ <code>ksmserver</code> 配下のスクリーンロッカー）になる。GUI 設定の場所は各デスクトップ環境の「電源管理」「省電力」「画面ロック」設定にあるので、そこで「画面の電源を切る」「ブランクスクリーン」「自動ロック」を <code>無効</code> ／<code>しない</code> に変更する。<code>~/.xsessionrc</code> の方は同じファイルでそのまま使える。</li>
+<li><strong>VirtualBox 上で動かしている場合、ホスト OS 側の電源設定も影響する</strong>。Kali（ゲスト）の DPMS とスクリーンセーバを完全に止めても、Windows（ホスト）の「設定」→「電源とバッテリー」→「画面とスリープ」で「画面をオフにする」が短時間に設定されていると、ホストの画面が消えてゲストも見えなくなる。両方の設定を見ること。</li>
+<li><strong>Wayland セッションでは <code>xset</code> 自体が効かない</strong>。Kali Xfce のデフォルトは X11 なので通常は関係ないが、念のため確認したい場合はターミナルで <code>echo $XDG_SESSION_TYPE</code> を実行し、出力が <code>x11</code> なら <code>xset</code> 系の手順 4 がそのまま効く。<code>wayland</code> と出る場合は手順 4 が無効で、GUI 設定（手順 2＋手順 3）のみで止める必要がある。</li>
+<li><strong>学習用 VM 向けの設定であり、業務環境ではそのままコピーしないこと</strong>。画面の自動ブランク／自動ロックは席を離れた間の覗き見対策として重要な機能。共用 PC や業務利用では「ディスプレイ電源管理（手順 2）とスクリーンセーバの自動発動（手順 3）は OFF にして黒画面は抑止するが、<code>xfce4-screensaver</code> の『ロック画面』タブの <strong>自動ロックは残す</strong>」運用も検討する。</li>
 </ul>
 </aside>
 
