@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kali Linux で初めてのポートスキャン（Nmap で scanme.nmap.org を調べる） — KaliLinuxことはじめ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+<p class="site-title"><a href="index.html">KaliLinuxことはじめ</a></p>
+</header>
+<main>
+<article>
+<h1>Kali Linux で初めてのポートスキャン — Nmap で scanme.nmap.org を調べる</h1>
+
+<section class="question">
+<h2>質問</h2>
+<p>Kali Linux の環境が整ったので、定番ツール Nmap を最初に触ってみたい。ただ、いきなり
+実在の他人のサイトに使うのは怖い。<strong>安全に練習できる相手</strong>はどこにあるのか。</p>
+<p>また、教わったとおり <code>nmap scanme.nmap.org</code> を実行したら、次のような警告が出て
+<strong>いつまでも終わらない</strong>。これは故障なのか、どう読み解けばよいのか。</p>
+<pre><code>kali@kali:~$ nmap scanme.nmap.org
+Starting Nmap 7.99 ( https://nmap.org ) at 2026-05-31 09:51 +0900
+Warning: 45.33.32.156 giving up on port because retransmission cap hit (10).</code></pre>
+</section>
+
+<section class="cause">
+<h2>原因（理由）</h2>
+<ul>
+<li>Nmap の<strong>ポートスキャンは「相手の入口（ポート）を外から調べる」行為</strong>。許可なく他人のサーバへ向けると、法律（日本では不正アクセス禁止法など）やレンタルサーバの規約に触れるおそれがある。だから練習には<strong>「スキャンしてよい」と明示的に許可されたホスト</strong>を使う</li>
+<li>その公式の練習用ホストが <code>scanme.nmap.org</code>。Nmap 開発元が「学習目的のスキャンを許可する」と公開しているサーバで、最初の一歩に最適</li>
+<li>「終わらない」のは故障ではない。<strong>Nmap のデフォルトは主要 1000 ポートを調べる</strong>が、その大半が <code>filtered</code>（ファイアウォールが探索パケットを黙って捨て、応答が返らない状態）だと、Nmap は返事を待って何度も<strong>送り直し（retransmission）</strong>を繰り返す。<code>retransmission cap hit (10)</code> は「あるポートに 10 回送り直しても返事がないので諦めた」という<strong>情報メッセージ</strong>で、これが多発すると全体が極端に遅くなる</li>
+<li>結果は <code>PORT</code> / <code>STATE</code> / <code>SERVICE</code> の表で読む。<code>STATE</code> が <code>open</code>＝接続できる入口、<code>closed</code>＝閉じている、<code>filtered</code>＝遮られて判別できない、を表す</li>
+</ul>
+</section>
+
+<section class="solution">
+<h2>対策（手順）</h2>
+
+<h3>1. 練習相手は scanme.nmap.org を使う</h3>
+<p>実在の他人のサイトではなく、Nmap 公式が許可している <code>scanme.nmap.org</code> に対して練習する。自分が所有・運用するサーバ以外には向けない、というのが大原則。</p>
+
+<h3>2. Nmap が入っているか確認する</h3>
+<pre><code>kali@kali:~$ nmap --version
+Nmap version 7.99 ( https://nmap.org )</code></pre>
+<p>バージョンが表示されれば準備完了（Kali には標準で入っている）。<code>$</code> はプロンプトなので入力しない。</p>
+
+<h3>3. まずは基本のスキャン（遅いことがある）</h3>
+<pre><code>kali@kali:~$ nmap scanme.nmap.org</code></pre>
+<p>主要 1000 ポートを調べる。scanme は世界中の人が練習で使う混雑したホストで、回線状況によっては前述の <code>retransmission cap hit</code> 警告が出て、なかなか終わらないことがある。これは正常な挙動。</p>
+
+<h3>4. 実行中に「進んでいるか」を確認する／中断する</h3>
+<p>スキャン中に <kbd>Enter</kbd> など適当なキーを 1 回押すと、進捗の一行が表示される：</p>
+<pre><code>Stats: 0:01:30 elapsed; 0 hosts completed (1 up), 1 undergoing SYN Stealth Scan
+SYN Stealth Scan Timing: About 42.13% done; ETC: 09:55 (0:02:05 remaining)</code></pre>
+<p><code>remaining</code>（残り時間）を見て、長すぎると感じたら <kbd>Ctrl</kbd>+<kbd>C</kbd> で安全に中断できる。</p>
+
+<h3>5. 終わらないときは -F で対象ポートを絞る</h3>
+<p><code>-F</code>（fast）を付けると、主要 <strong>100 ポート</strong>だけを手早く調べる。<code>-v</code> は途中経過を表示するオプション。</p>
+<pre><code>kali@kali:~$ nmap -v -F scanme.nmap.org
+Starting Nmap 7.99 ( https://nmap.org ) at 2026-05-31 10:15 +0900
+Initiating Ping Scan at 10:15
+Completed Ping Scan at 10:15, 0.01s elapsed (1 total hosts)
+Initiating SYN Stealth Scan at 10:15
+Scanning scanme.nmap.org (45.33.32.156) [100 ports]
+Discovered open port 22/tcp on 45.33.32.156
+Discovered open port 80/tcp on 45.33.32.156
+Completed SYN Stealth Scan at 10:15, 2.49s elapsed (100 total ports)
+Nmap scan report for scanme.nmap.org (45.33.32.156)
+Host is up (0.027s latency).
+Not shown: 98 filtered tcp ports (no-response)
+PORT   STATE SERVICE
+22/tcp open  ssh
+80/tcp open  http
+
+Nmap done: 1 IP address (1 host up) scanned in 2.80 seconds
+           Raw packets sent: 203 (8.904KB) | Rcvd: 5 (208B)</code></pre>
+<p>1000 ポートではなく 100 ポートに絞ったので、わずか数秒で完了した。</p>
+
+<h3>6. 出力の読み方</h3>
+<ul>
+<li><code>Host is up (0.027s latency)</code> … 相手は生きていて、往復約 0.027 秒（速い）</li>
+<li><code>Not shown: 98 filtered tcp ports (no-response)</code> … <strong>ここが「遅さ」の正体</strong>。100 ポート中 98 ポートが <code>filtered</code>（応答なし）。デフォルトの 1000 ポートではこの“応答なし待ち”が大量に発生するため遅くなる</li>
+<li>表の <code>open</code> 行が成果。<code>22/tcp ssh</code> と <code>80/tcp http</code> の 2 つが「外から接続できる入口」</li>
+<li>最終行 <code>Raw packets sent: 203 | Rcvd: 5</code> … 203 個送って返ってきたのは 5 個だけ。ほとんど無視（filtered）されたことを裏付けている</li>
+</ul>
+<table>
+<thead>
+<tr><th>STATE</th><th>意味</th></tr>
+</thead>
+<tbody>
+<tr><td><code>open</code></td><td>ポートが開いていて接続を受け付けている（＝入口）</td></tr>
+<tr><td><code>closed</code></td><td>到達はするが、そのポートは閉じている</td></tr>
+<tr><td><code>filtered</code></td><td>ファイアウォール等に遮られ、開閉を判別できない</td></tr>
+</tbody>
+</table>
+
+<h3>7. 開いていた入口を -sV で深掘りする（バージョン特定）</h3>
+<p>開いていた 2 ポートに絞り、<code>-sV</code>（version）で「そこで動いているソフトと正確なバージョン」まで調べる。<code>-sV</code> は精度のため管理者権限が要るので <code>sudo</code> を付ける（初回はパスワードを聞かれる。入力中は画面に何も表示されないが、そのまま打って <kbd>Enter</kbd>）。</p>
+<pre><code>kali@kali:~$ sudo nmap -sV -p 22,80 scanme.nmap.org
+[sudo] kali のパスワード:
+Starting Nmap 7.99 ( https://nmap.org ) at 2026-05-31 10:27 +0900
+Nmap scan report for scanme.nmap.org (45.33.32.156)
+Host is up (0.031s latency).
+
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.13 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+Nmap done: 1 IP address (1 host up) scanned in 8.67 seconds</code></pre>
+<ul>
+<li><code>-p 22,80</code> … 調べるポートを 2 つに限定</li>
+<li>右端の <code>VERSION</code> 列が <code>-sV</code> の成果。<strong>OpenSSH 6.6.1p1</strong> と <strong>Apache httpd 2.4.7</strong> という具体的なソフトと版が判明した</li>
+<li><code>Service Info: OS: Linux</code> … バナーから中身は Linux と推測。<code>CPE:</code> はソフトを世界共通の書式で表した ID で、脆弱性データベースと照合する際のキーになる</li>
+</ul>
+
+<h3>8. バージョンが分かると何ができるのか</h3>
+<p>ソフト名とバージョンが特定できると、「<strong>その版に既知の弱点（脆弱性）があるか</strong>」を調べる次の工程へ進める。具体的には、脆弱性データベース（NVD/CVE）でその版を検索したり、Kali 内蔵の <code>searchsploit</code> で既知の手法を探したりする。つまり<strong>ステップ 1 の Nmap は、後続の脆弱性スキャンの“地図”を作る工程</strong>だと分かる。</p>
+</section>
+
+<aside class="note">
+<h2>注意点</h2>
+<ul>
+<li><strong>許可された対象にだけ実行する</strong>。練習は <code>scanme.nmap.org</code>、または自分が所有・運用するサーバに限る。他人のサーバへのスキャンは違法・規約違反になり得る</li>
+<li><code>scanme.nmap.org</code> は混雑しているため遅い・警告が出るのが普通。故障ではない</li>
+<li><code>-sV</code> は相手のポートに少しデータを送って会話する。単に眺めるだけの完全に受動的な操作ではない点に留意する</li>
+<li>自分のサイト（例：レンタルサーバ上の WordPress）に向ける場合は、(1) 契約サーバの規約でポートスキャンが禁止されていないか確認する、(2) Cloudflare などの CDN を挟んでいると、実サーバではなく CDN を調べてしまう、という 2 点に注意する</li>
+</ul>
+</aside>
+
+<p class="nav"><a href="index.html">← 記事一覧へ戻る</a></p>
+</article>
+</main>
+</body>
+</html>

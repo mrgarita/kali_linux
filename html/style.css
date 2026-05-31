@@ -112,6 +112,20 @@ pre code {
   padding: 0;
 }
 
+table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+th, td {
+  border: 1px solid var(--color-border);
+  padding: 0.4rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+th {
+  background: var(--color-code-bg);
+}
+
 .note {
   background: var(--color-note-bg);
   border-left: 4px solid var(--color-note-border);
